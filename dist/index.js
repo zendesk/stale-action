@@ -49743,6 +49743,7 @@ var Option;
     Option["IgnorePrUpdates"] = "ignore-pr-updates";
     Option["ExemptDraftPr"] = "exempt-draft-pr";
     Option["CloseIssueReason"] = "close-issue-reason";
+    Option["ExemptIssueTypes"] = "exempt-issue-types";
     Option["OnlyIssueTypes"] = "only-issue-types";
 })(Option || (Option = {}));
 
@@ -51974,6 +51975,19 @@ class IssuesProcessor {
             const issueType = (issue.issue_type || '').toLowerCase();
             if (!allowedTypes.includes(issueType)) {
                 issueLogger.info(`Skipping this $$type because its type ('${issue.issue_type}') is not in onlyIssueTypes (${allowedTypes.join(', ')})`);
+                IssuesProcessor._endIssueProcessing(issue);
+                return;
+            }
+        }
+        // exemptIssueTypes wins if both it and onlyIssueTypes are specified
+        if (this.options.exemptIssueTypes && !issue.isPullRequest) {
+            const exemptTypes = this.options.exemptIssueTypes
+                .split(',')
+                .map(t => t.trim().toLowerCase())
+                .filter(Boolean);
+            const issueType = (issue.issue_type || '').toLowerCase();
+            if (exemptTypes.includes(issueType)) {
+                issueLogger.info(`Skipping this $$type because its type ('${issue.issue_type}') is in exemptIssueTypes (${exemptTypes.join(', ')})`);
                 IssuesProcessor._endIssueProcessing(issue);
                 return;
             }
@@ -106904,7 +106918,8 @@ function _getAndValidateArgs() {
         exemptDraftPr: getInput('exempt-draft-pr') === 'true',
         closeIssueReason: getInput('close-issue-reason'),
         includeOnlyAssigned: getInput('include-only-assigned') === 'true',
-        onlyIssueTypes: getInput('only-issue-types')
+        onlyIssueTypes: getInput('only-issue-types'),
+        exemptIssueTypes: getInput('exempt-issue-types')
     };
     for (const numberInput of ['days-before-stale']) {
         if (isNaN(parseFloat(getInput(numberInput)))) {
